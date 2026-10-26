@@ -31,6 +31,23 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+          
+      - name: Set app name to Bara Salfa Yemen
+        run: |
+          MANIFEST=$(find extracted -name AndroidManifest.xml -path '*/src/main/*' | head -n 1)
+          if [ -n "$MANIFEST" ]; then
+            STRINGS="$(dirname "$MANIFEST")/res/values/strings.xml"
+            mkdir -p "$(dirname "$STRINGS")"
+            if [ -f "$STRINGS" ]; then
+              if grep -q 'name="app_name"' "$STRINGS"; then
+                sed -i 's#<string name="app_name">.*</string>#<string name="app_name">برا السالفة اليمنية</string>#' "$STRINGS"
+              else
+                sed -i 's#</resources>#    <string name="app_name">برا السالفة اليمنية</string>\n</resources>#' "$STRINGS"
+              fi
+            else
+              printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">برا السالفة اليمنية</string>\n</resources>\n' > "$STRINGS"
+            fi
+          fi
 
       - name: Build APK
         run: |
