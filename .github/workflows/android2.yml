@@ -1,4 +1,4 @@
-name: Build Bara Salfa yemeny APK
+name: Build Bara Salfa Yemeny APK
 
 on:
   workflow_dispatch:
@@ -11,6 +11,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,8 +19,17 @@ jobs:
       - name: Extract Android project
         run: |
           unzip -q BarasalfaIcon.zip
-          ls -la
-          test -f BaraSalfaAndroid/app/build.gradle || test -f BarasalfaIcon/app/build.gradle || test -f app/build.gradle
+          echo "Searching for Android project..."
+          PROJECT_DIR="$(find . -type f -path '*/app/build.gradle' -print -quit | sed 's#/app/build.gradle##')"
+          if [ -z "$PROJECT_DIR" ]; then
+            PROJECT_DIR="$(find . -type f -path '*/app/build.gradle.kts' -print -quit | sed 's#/app/build.gradle.kts##')"
+          fi
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Android project not found in ZIP"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Found project: $PROJECT_DIR"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -31,61 +41,59 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-          
+
       - name: Change application name
-  run: |
-  PROJECT_DIR=$(find extracted -type f -path '*/app/src/main/AndroidManifest.xml' -print -quit | sed 's#/app/src/main/AndroidManifest.xml##')
-  if [ -z "$PROJECT_DIR" ]; then
-  echo "Android project not found"
-  exit 1
-  fi
-  export PROJECT_DIR
-  python3 - <<'PY'
-  import os
-  import xml.etree.ElementTree as ET
-  
-      project = os.environ["PROJECT_DIR"]
-    res = os.path.join(project, "app/src/main/res/values")
-    os.makedirs(res, exist_ok=True)
-    strings = os.path.join(res, "strings.xml")
+        run: |
+          MANIFEST="$PROJECT_DIR/app/src/main/AndroidManifest.xml"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "AndroidManifest.xml not found"
+            exit 1
+          fi
 
-    if os.path.exists(strings):
-        tree = ET.parse(strings)
-        root = tree.getroot()
-    else:
-        root = ET.Element("resources")
-        tree = ET.ElementTree(root)
+          export PROJECT_DIR
+          python3 - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
 
-    item = root.find("string[@name='app_name']")
-    if item is None:
-        item = ET.SubElement(root, "string", {"name": "app_name"})
-    item.text = "برا السالفة اليمنية"
-    tree.write(strings, encoding="utf-8", xml_declaration=True)
+          project = os.environ["PROJECT_DIR"]
+          res = os.path.join(project, "app/src/main/res/values")
+          os.makedirs(res, exist_ok=True)
+          strings = os.path.join(res, "strings.xml")
 
-    manifest = os.path.join(project, "app/src/main/AndroidManifest.xml")
-    tree = ET.parse(manifest)
-    root = tree.getroot()
-    app = root.find("application")
-    if app is None:
-        raise RuntimeError("Application tag not found")
-    app.set("{http://schemas.android.com/apk/res/android}label", "@string/app_name")
-    tree.write(manifest, encoding="utf-8", xml_declaration=True)
-    print("Application name changed successfully")
-    PY
-    
+          if os.path.exists(strings):
+              tree = ET.parse(strings)
+              root = tree.getroot()
+          else:
+              root = ET.Element("resources")
+              tree = ET.ElementTree(root)
+
+          item = root.find("string[@name='app_name']")
+          if item is None:
+              item = ET.SubElement(root, "string", {"name": "app_name"})
+          item.text = "برا السالفة اليمنية"
+          tree.write(strings, encoding="utf-8", xml_declaration=True)
+
+          manifest = os.path.join(project, "app/src/main/AndroidManifest.xml")
+          tree = ET.parse(manifest)
+          root = tree.getroot()
+          app = root.find("application")
+          if app is None:
+              raise RuntimeError("Application tag not found")
+          app.set("{http://schemas.android.com/apk/res/android}label", "@string/app_name")
+          tree.write(manifest, encoding="utf-8", xml_declaration=True)
+
+          print("Application name changed successfully")
+          PY
+
       - name: Build APK
         run: |
-          # يحدد اسم المجلد تلقائياً
-          if [ -d BaraSalfaAndroid ]; then cd BaraSalfaAndroid; elif [ -d BarasalfaIcon ]; then cd BarasalfaIcon; fi
+          cd "$PROJECT_DIR"
           gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BaraSalfa-APK
-          path: |
-            BaraSalfaAndroid/app/build/outputs/apk/debug/app-debug.apk
-            BarasalfaIcon/app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/debug/app-debug.apk
+          name: BaraSalfa-Yemeny-APK
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
