@@ -1,0 +1,50 @@
+name: Build Bara Salfa APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract Android project
+        run: |
+          unzip -q BarasalfaIcon.zip
+          ls -la
+          test -f BaraSalfaAndroid/app/build.gradle || test -f BarasalfaIcon/app/build.gradle || test -f app/build.gradle
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        run: |
+          # يحدد اسم المجلد تلقائياً
+          if [ -d BaraSalfaAndroid ]; then cd BaraSalfaAndroid; elif [ -d BarasalfaIcon ]; then cd BarasalfaIcon; fi
+          gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BaraSalfa-APK
+          path: |
+            BaraSalfaAndroid/app/build/outputs/apk/debug/app-debug.apk
+            BarasalfaIcon/app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
