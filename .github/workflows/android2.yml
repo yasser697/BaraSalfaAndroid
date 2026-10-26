@@ -1,4 +1,4 @@
-name: Build Bara Salfa APK
+name: Build Bara Salfa yemeny APK
 
 on:
   workflow_dispatch:
