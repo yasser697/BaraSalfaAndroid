@@ -34,7 +34,7 @@ jobs:
           
       - name: Change application name
   run: |
-  PROJECT_DIR="$(find extracted -type f -path '*/app/src/main/AndroidManifest.xml' -print -quit | sed 's#/app/src/main/AndroidManifest.xml##')"
+  PROJECT_DIR=$(find extracted -type f -path '*/app/src/main/AndroidManifest.xml' -print -quit | sed 's#/app/src/main/AndroidManifest.xml##')
   if [ -z "$PROJECT_DIR" ]; then
   echo "Android project not found"
   exit 1
@@ -72,6 +72,7 @@ jobs:
     tree.write(manifest, encoding="utf-8", xml_declaration=True)
     print("Application name changed successfully")
     PY
+    
       - name: Build APK
         run: |
           # يحدد اسم المجلد تلقائياً
